@@ -97,6 +97,7 @@ interface serverKey {
 
 暗号化されたデータは共通の形式で表現され、鍵やメッセージなど様々なデータに適用されます。
 
+
 ```ts
 export interface EncryptedData {
   keyType: string;              // 暗号化に使用された鍵の種類
@@ -126,118 +127,66 @@ export interface Sign {
 ### メッセージの基本構造
 
 Takosプロトコルでは、暗号化されたメッセージと非暗号化メッセージの2種類があります。
-
-isLargeフラグは、メッセージが256KBを超える場合にtrueとなります。大きなメッセージは、サーバー側で分割されて送信されることがあります。
-256kbを超えるメッセージは、通常送信することが不可能なため、サムネイルを経由して送信されます。
+256kbを超えるデータはisLargeフラグがtrueになります。
 
 ```ts
-// ユーザー識別子（必要に応じて詳細な型定義に変更可能）
-export type UserIdentifier = string;
-
-// 返信情報
-export interface ReplyInfo {
-  id: string; // 返信対象のメッセージID
-}
-
 // 非暗号化メッセージの構造
 export interface NotEncryptMessage {
-  encrypted: false;
-  value: {
-    type: "text" | "image" | "video" | "audio" | "file" | "thumbnail";
-    content: string; // 各タイプに応じたJSON文字列（下記参照）
-    reply?: ReplyInfo; // 返信情報
-    mention?: string[]; // メンション対象のユーザーIDリスト
-  };
-  channel: string; // メッセージが属するチャンネル
-  /**
-   * isLargeがtrueの場合、またはサムネイルの場合に元のコンテンツへの参照として利用。
-   */
-  original?: string;
-  timestamp: number; // メッセージ送信時のタイムスタンプ
-  isLarge: boolean; // コンテンツサイズが大きいかどうかのフラグ
-  roomid: string; // メッセージが属するルームID
+	encrypted: false;
+	value: MessageContent;
+	channel: string;
+	original?: string;
+	timestamp: number;
+	isLarge: boolean;
+	roomid: string;
 }
 
 // 暗号化メッセージの構造
 export interface EncryptedMessage {
-  encrypted: true;
-  value: string; // 暗号化されたデータ（EncryptedDataのJSON文字列）
-  channel: string;
-  /**
-   * サムネイルメッセージや大容量メッセージの場合、元のコンテンツへの参照として指定。
-   */
-  original?: string;
-  timestamp: number;
-  isLarge: boolean;
-  roomid: string;
+	encrypted: true;
+	value: string;
+	channel: string;
+	original?: string;
+	timestamp: number;
+	isLarge: boolean;
+	roomid: string;
 }
 
 // メッセージ全体の型（非暗号化・暗号化のどちらか）
 export type Message = NotEncryptMessage | EncryptedMessage;
 
-// 各コンテンツタイプの詳細な形式
-
-// 1. textタイプのコンテンツ
-export interface TextContent {
-  text: string;                 // テキスト本文
-  format?: "plain" | "markdown"; // テキスト形式（未指定の場合はplainを想定）
-  thumbnailText?: string;       // テキストサムネイル用
-}
-
-// 2. imageタイプのコンテンツ
-export interface ImageContent {
-  uri: string;                  // 画像のURI（Base64データURIまたはURL）
-  metadata: {
-    filename: string;           // ファイル名
-    mimeType: string;           // MIMEタイプ（例: image/jpeg, image/png）
-  };
-  thumbnailUri?: string;        // サムネイルURI
-  thumbnailMimeType?: string;   // サムネイルMIMEタイプ
-}
-
-// 3. videoタイプのコンテンツ
-export interface VideoContent {
-  uri: string;                  // 動画のURI（Base64データURIまたはURL）
-  metadata: {
-    filename: string;           // ファイル名
-    mimeType: string;           // MIMEタイプ（例: video/mp4）
-  };
-  thumbnailUri?: string;        // サムネイルURI
-  thumbnailMimeType?: string;   // サムネイルMIMEタイプ
-}
-
-// 4. audioタイプのコンテンツ
-export interface AudioContent {
-  uri: string;                  // 音声のURI（Base64データURIまたはURL）
-  metadata: {
-    filename: string;           // ファイル名
-    mimeType: string;           // MIMEタイプ（例: audio/mp3, audio/wav）
-  };
-  thumbnailText?: string;       // ファイル名など
-}
-
-// 5. fileタイプのコンテンツ
-export interface FileContent {
-  uri: string;                  // ファイルのURI（Base64データURIまたはURL）
-  metadata: {
-    filename: string;           // ファイル名
-    mimeType: string;           // MIMEタイプ
-  };
-  thumbnailText?: string;       // ファイル名など
-}
-
-// メッセージのコンテンツタイプ
-export type MessageContent = TextContent 
-  | ImageContent 
-  | VideoContent 
-  | AudioContent 
-  | FileContent;
-
 ```
+
+### 統合されたコンテンツ形式
+
+```ts
+export interface MessageContent {
+	type: string;            // コンテンツタイプ
+	content: string;         // コンテンツデータ（テキスト or Base64/URL）
+	metadata?: {             // オプションのメタデータ
+		filename: string;
+		mimeType: string;
+	};
+	reply?: string;          // 返信先メッセージID
+}
+```
+
+### サポートされる `messageType`
+
+| MIME タイプ      | 説明                                   |
+|------------------|---------------------------------------|
+| text/plain       | プレーンテキスト                         |
+| text/markdown    | Markdown                                |
+| image/*          | ブラウザで表示可能な画像形式              |
+| video/*          | ブラウザで表示可能な動画形式              |
+| audio/*          | ブラウザで表示可能な音声形式              |
+
+上記以外の形式は、Base64 エンコードされたデータとして扱われます。
+
 
 ### メンション機能
 
-テキストメッセージには特定のユーザーへのメンション機能があります。`mention` フィールドにユーザーIDの配列として格納されます。
+メッセージの中に @<ユーザーID> 形式でメンションを含めることができます。
 
 ## 鍵の管理と運用
 
