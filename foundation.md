@@ -7,25 +7,18 @@ API は、各サーバー間の HTTPS リクエストを使用して実装され
 リクエストは、TLS トランスポート層での公開キー署名と、HTTP 層での HTTP
 認証ヘッダー内の公開キー署名を使用して強力に認証されます。
 
-## サーバー実装
+## GET API 一覧
+
+以下は takos サーバーの GET 系 API 一覧です。
 
 ### `GET` /_takos/v1/version
 
 サーバーの実装名とバージョンを取得します。
 
-レート制限: なし 認証: なし
+- レート制限: なし
+- 認証: なし
 
-### リクエスト
-
-リクエストパラメータまたはリクエスト本文がありません。
-
-### レスポンス
-
-| 状態 | 説明           |
-| ---- | -------------- |
-| 200  | 実装バージョン |
-
-#### 200
+#### レスポンス
 
 ```json
 {
@@ -34,17 +27,16 @@ API は、各サーバー間の HTTPS リクエストを使用して実装され
 }
 ```
 
+---
+
 ### `GET` /_takos/v1/key/server
 
 サーバーの公開鍵を取得します。
 
-サーバーの公開された署名キーを取得します。
+- レート制限: なし
+- 認証: なし
 
-レート制限: なし 認証: なし
-
-#### リクエスト
-
-`query`
+#### クエリ
 
 | パラメータ | 説明           |
 | ---------- | -------------- |
@@ -52,40 +44,28 @@ API は、各サーバー間の HTTPS リクエストを使用して実装され
 
 #### レスポンス
 
-| 状態 | 説明             |
-| ---- | ---------------- |
-| 200  | サーバーの公開鍵 |
-
-#### 200
-
 ```json
 {
   "key": "PUBLIC_KEY"
 }
 ```
 
-### `GET` /_takos/v1/key/server/{`serverName`}
+---
+
+### `GET` /_takos/v1/key/server/{serverName}
 
 他のサーバーの公開鍵を取得します。
 
-レート制限: なし 認証: なし
+- レート制限: なし
+- 認証: なし
 
-#### リクエスト
+#### クエリ
 
-`query`
-
-| パラメータ   | 説明               |
-| ------------ | ------------------ |
-| `expires`    | キーの有効期限     |
-| `serverName` | サーバー名(domain) |
+| パラメータ | 説明           |
+| ---------- | -------------- |
+| `expire`   | キーの有効期限 |
 
 #### レスポンス
-
-| 状態 | 説明             |
-| ---- | ---------------- |
-| 200  | サーバーの公開鍵 |
-
-#### 200
 
 ```json
 {
@@ -93,39 +73,138 @@ API は、各サーバー間の HTTPS リクエストを使用して実装され
 }
 ```
 
-## 認証
+---
 
-サーバーによって行われるすべてのHTTPリクエストは、公開鍵署名を使用して認証されます。bodyの署名は、`Authorization`ヘッダーに含まれ、`X-Takos-Signature`ヘッダーに含まれます。
+### `GET` /_takos/v1/user/{userId}/{key}
 
-### `Authorization` ヘッダー
+ユーザーのデータ（icon, nickName, description, verify）を取得します。
 
-`Authorization` ヘッダーは、公開鍵署名を含むベアラートークンです。
+- レート制限: なし
+- 認証: なし
 
-```Authorization
-Authorization: X-Takos-Signature sign="<署名>", Expires="<有効期限>, origin="<ドメイン>"
-```
+#### パスパラメータ
 
-example:
+| パラメータ | 説明       |
+| ---------- | ---------- |
+| `userId`   | ユーザーID |
+| `key`      | 取得項目 (icon, nickName, description, verify) |
+
+#### レスポンス
 
 ```json
 {
-  "method": "POST",
-  "path": "path(example)",
-  "body": "body(example)",
-  "Content-Type": "application/json",
-  "Authorization": "X-Takos-Signature sign=\"<署名>\", Expires=\"<有効期限>\", origin=\"<ドメイン>\""
+  "data": /* 取得したデータ */
 }
 ```
 
-Authorization ヘッダーの形式は、 RFC 9110 のセクション 11.4で規定されています。
+### `GET` /_takos/v1/group/{groupId}/{key}
 
-origin: 送信サーバーのサーバー名 expires: 有効期限 sign: 署名
+- `key` : icon | name | description | defaultChannelId
 
-### レスポンス認証
+#### レスポンス
 
-応答は TLS サーバー証明書によって認証されます。
+```json
+{ "data": /* 取得したデータ */ }
+```
 
-### `POST` /_takos/v1/event/
+#### レスポンス
+
+```json
+{ "hash": "CURRENT_HASH" }
+```
+
+
+### `GET` /_takos/v1/crypto/key/{kind}
+
+ユーザーの暗号鍵（identityKey, roomKey）を取得するエンドポイントです。
+
+#### クエリパラメーター
+
+| パラメーター   | 型     | 説明                                                      |
+| -------------- | ------ | --------------------------------------------------------- |
+| `userId`       | string | ユーザーID。serverKey以外必須。                           |
+| `hash`         | string | `identityKey` と `roomKey` の場合に必須となるハッシュ値。 |
+| `targetUserId` | string | `roomKey` の場合に必要な相手のユーザーID。                |
+
+#### レスポンス
+
+```json
+{
+  "key": "data",
+  "signature"?: "signature"
+}
+```
+
+---
+
+### `GET` /_takos/v1/group/search
+
+グループを検索するエンドポイントです。
+
+#### クエリパラメーター
+
+| パラメーター | 型     | 説明           |
+| ------------ | ------ | -------------- |
+| `query`      | string | キーワード     |
+| `limit`      | number | 取得する最大数 |
+
+#### レスポンス
+
+```json
+{
+  "groups": string[]
+}
+```
+
+---
+
+### `GET` /_takos/v1/server/{item}
+
+サーバーのデータを取得します。
+
+- レート制限: なし
+- 認証: なし
+
+items
+
+- name - サーバー名
+- description - サーバーの説明
+- icon - サーバーアイコン
+- version - サーバーバージョン
+
+---
+
+### `GET` /_takos/v1/message/:messageId
+
+メッセージのデータを取得します。
+
+- レート制限: なし
+- 認証: なし
+
+#### パスパラメータ
+
+| パラメータ  | 説明         |
+| ----------- | ------------ |
+| `messageId` | メッセージID |
+
+#### レスポンス
+
+```json
+{
+  "message": message.message,
+  "signature": message.sign,
+  "timestamp": message.timestamp,
+  "userName": message.userName
+}
+```
+
+---
+
+## サーバー実装
+
+GET系APIについては「GET API 一覧」を参照してください。
+
+### `POST` /_takos/v1/event
 
 イベントを送信します。
 
@@ -147,6 +226,31 @@ origin: 送信サーバーのサーバー名 expires: 有効期限 sign: 署名
 
 レスポンスの内容はありません。 成功かどうかは、HTTP
 ステータスコードで判断します。
+
+## 認証
+
+サーバーによって行われるすべてのHTTPリクエストは、公開鍵署名を使用して認証されます。リクエストボディの署名は、`Authorization`ヘッダーに含まれます。
+
+### `Authorization` ヘッダー
+
+#### `Authorization` ヘッダー例
+以下のように HTTP リクエストヘッダーとして送信します。
+```
+POST /_takos/v1/event HTTP/1.1
+Host: example.com
+Content-Type: application/json
+Authorization: X-Takos-Signature signature="<署名>", Expires="<有効期限>", origin="<ドメイン>"
+
+{ /* リクエストボディ */ }
+```
+
+Authorization ヘッダーの形式は、HTTP Message Signature (IETF draft) を参考にしています。
+
+origin: 送信サーバーのサーバー名 expires: 有効期限 sign: 署名
+
+### レスポンス認証
+
+応答は TLS サーバー証明書によって認証されます。
 
 ## Events
 
@@ -205,7 +309,7 @@ origin: 送信サーバーのサーバー名 expires: 有効期限 sign: 署名
 | `userId`    | `string`                         | ユーザーID   |
 | `messageId` | `string`                         | メッセージID |
 | `roomId`    | `string`                         | ルームID     |
-| `roomType`  | `friend or group or publicGroup` | ルームタイプ |
+| `roomType`  | `"friend" | "privateGroup" | "publicGroup"` | ルームタイプ |
 | `channelId` | `string`                         | チャンネルID |
 
 ### t.group.invite.send
@@ -278,15 +382,15 @@ origin: 送信サーバーのサーバー名 expires: 有効期限 sign: 署名
 | `groupId`     | `string`             | グループID   |
 | `channelId`   | `string`             | チャンネルID |
 | `channelName` | `string`             | チャンネル名 |
-| `categoryId`  | `string or undefind` | カテゴリー   |
-| `permission`  | `object[]`           | 権限         |
+| `categoryId`  | `string or undefined` | カテゴリー   |
+| `permissions` | `object[]`           | 権限         |
 
 `object`
 
-| パラメータ    | 型         | 説明       |
-| ------------- | ---------- | ---------- |
-| `userId`      | `string`   | ユーザーID |
-| `permissions` | `string[]` | 権限       |
+| パラメータ   | 型         | 説明        |
+| ------------ | ---------- | ----------- |
+| `roleId`     | `string`   | ロールID    |
+| `permissions`| `string[]` | 権限        |
 
 ### t.group.channel.remove
 
@@ -316,10 +420,10 @@ origin: 送信サーバーのサーバー名 expires: 有効期限 sign: 署名
 
 `object`
 
-| パラメータ   | 型         | 説明       |
-| ------------ | ---------- | ---------- |
-| `userId`     | `string`   | ユーザーID |
-| `permission` | `string[]` | 権限       |
+| パラメータ   | 型         | 説明        |
+| ------------ | ---------- | ----------- |
+| `roleId`     | `string`   | ロールID    |
+| `permissions`| `string[]` | 権限        |
 
 ### t.group.category.remove
 
@@ -333,6 +437,16 @@ origin: 送信サーバーのサーバー名 expires: 有効期限 sign: 署名
 | `groupId`    | `string` | グループID   |
 | `categoryId` | `string` | カテゴリーID |
 
+### t.group.channel.order
+チャンネルとカテゴリーの順番を変更します。
+`payload`
+| パラメータ    | 型         | 説明         |
+| ------------- | ---------- | ------------ |
+| `userId`      | `string`   | ユーザーID   |
+| `groupId`     | `string`   | グループID   |
+| `channelId`   | `string[]` | チャンネルID |
+| `categoryId`  | `string[]` | カテゴリーID |
+
 ### t.group.role.add
 
 グループロールを作成/上書きします。
@@ -345,7 +459,7 @@ origin: 送信サーバーのサーバー名 expires: 有効期限 sign: 署名
 | `groupId`    | `string`   | グループID   |
 | `roleId`     | `string`   | ロールID     |
 | `roleName`   | `string`   | ロール名     |
-| `permission` | `string[]` | 権限         |
+| `permissions` | `string[]` | 権限         |
 | `color`      | `string`   | カラーコード |
 
 ### t.group.role.remove
@@ -370,27 +484,8 @@ origin: 送信サーバーのサーバー名 expires: 有効期限 sign: 署名
 | -------------- | ---------- | ------------------ |
 | `userId`       | `string`   | ユーザーID         |
 | `groupId`      | `string`   | グループID         |
-| `roleId`       | `string[]` | ロールID           |
+| `roleIds`      | `string[]` | ロールID一覧       |
 | `assignUserId` | `string`   | 割り当てユーザーID |
-
-### t.group.order
-
-グループのチャンネル/カテゴリーの順番を変更します。
-
-`payload`
-
-| パラメータ | 型         | 説明       |
-| ---------- | ---------- | ---------- |
-| `userId`   | `string`   | ユーザーID |
-| `groupId`  | `string`   | グループID |
-| `order`    | `object`[] | 順番       |
-
-`object`
-
-| パラメータ | 型                    | 説明   |
-| ---------- | --------------------- | ------ |
-| `id`       | `string`              | ID     |
-| `type`     | `category or channel` | タイプ |
 
 ### t.group.join.request
 
@@ -498,340 +593,50 @@ origin: 送信サーバーのサーバー名 expires: 有効期限 sign: 署名
 | `groupId`   | `string` | グループID   |
 | `channelId` | `string` | チャンネルID |
 
-### t.group.sync.owner
+### t.group.sync
 
-グループのオーナーの変更情報を共有します。
+クライアントが最新ハッシュを送信し、差異があれば全データを要求・送信するためのトリガーイベントです。  
+#### payload
+| フィールド        | 型      | 説明                            |
+|-------------------|---------|---------------------------------|
+| protocolVersion   | string  | 同期プロトコルバージョン (`"1.0"`) |
+| timestamp         | string  | 送信時刻 (ISO 8601 UTC)          |
+| userId            | string  | 要求元ユーザーID                |
+| groupId           | string  | グループID                      |
 
-`payload`
+イベントで全データを送ります。
 
-| パラメータ | 型       | 説明       |
-| ---------- | -------- | ---------- |
-| `userId`   | `string` | ユーザーID |
-| `groupId`  | `string` | グループID |
+### t.group.sync.diff
 
-### t.group.sync.user.add
+JSON Patch (RFC 6902) による差分同期イベントです。  
+#### payload
+| フィールド        | 型          | 説明                                   |
+|-------------------|-------------|----------------------------------------|
+| protocolVersion   | string      | 同期プロトコルバージョン (`"1.0"`)       |
+| timestamp         | string      | 送信時刻 (ISO 8601 UTC)                |
+| userId            | string      | 要求元ユーザーID                       |
+| groupId           | string      | グループID                             |
+| patch             | JSONPatch[] | 差分配列 (RFC 6902 準拠)               |
 
-ユーザーの追加情報を共有するイベント。
+```ts
+// JSONPatch の詳細は group.md を参照
+```
 
-`payload`
+## エラー処理とリトライポリシー
 
-| パラメータ      | 型     | 説明           |
-| --------------- | ------ | -------------- |
-| `groupId`       | string | グループID     |
-| `userId`        | string | ユーザーID     |
-| `beforeEventId` | string | 前のイベントID |
+分散環境下でのグループ操作（leave, kick, ban, unban, invite, join など）では、相手サーバーがタイムアウトや拒否を返すケースを考慮します。
 
-### t.group.sync.user.remove
+1. ローカル先行更新  
+   - 操作対象をローカルDB上で先に適用し、ユーザーには即時反映を通知します。  
+   - 例）`t.group.leave` では自サーバーのメンバーリストから即時削除。
 
-ユーザーの削除情報を共有するイベント。
+2. リモートリクエスト送信  
+   - 対象サーバーへ HTTPS リクエストを送信し、成功レスポンスを待ちます。
 
-`payload`
-
-| パラメータ      | 型     | 説明           |
-| --------------- | ------ | -------------- |
-| `groupId`       | string | グループID     |
-| `userId`        | string | ユーザーID     |
-| `beforeEventId` | string | 前のイベントID |
-
-### t.group.sync.role.assign
-
-ロールの割り当て情報を共有するイベント。
-
-`payload`
-
-| パラメータ      | 型       | 説明               |
-| --------------- | -------- | ------------------ |
-| `groupId`       | string   | グループID         |
-| `roleId`        | string[] | ロールID           |
-| `userId`        | string   | 割り当てユーザーID |
-| `beforeEventId` | string   | 前のイベントID     |
-
-### t.group.sync.channel.add
-
-チャンネルの追加情報を共有するイベント。
-
-`payload`
-
-| パラメータ      | 型                                         | 説明           |
-| --------------- | ------------------------------------------ | -------------- |
-| `groupId`       | string                                     | グループID     |
-| `channelId`     | string                                     | チャンネルID   |
-| `category`      | string                                     | カテゴリー     |
-| `permissions`   | { roleId: string, permissions: string[]}[] | 権限リスト     |
-| `beforeEventId` | string                                     | 前のイベントID |
-
-### t.group.sync.channel.remove
-
-チャンネルの削除情報を共有するイベント。
-
-`payload`
-
-| パラメータ      | 型     | 説明           |
-| --------------- | ------ | -------------- |
-| `groupId`       | string | グループID     |
-| `channelId`     | string | チャンネルID   |
-| `beforeEventId` | string | 前のイベントID |
-
-### t.group.sync.category.add
-
-カテゴリーの追加情報を共有するイベント。
-
-`payload`
-
-| パラメータ      | 型       | 説明           |
-| --------------- | -------- | -------------- |
-| `groupId`       | string   | グループID     |
-| `categoryId`    | string   | カテゴリーID   |
-| `permissions`   | string[] | 権限リスト     |
-| `beforeEventId` | string   | 前のイベントID |
-
-### t.group.sync.category.remove
-
-カテゴリーの削除情報を共有するイベント。
-
-`payload`
-
-| パラメータ      | 型     | 説明           |
-| --------------- | ------ | -------------- |
-| `groupId`       | string | グループID     |
-| `categoryId`    | string | カテゴリーID   |
-| `beforeEventId` | string | 前のイベントID |
+3. タイムアウト・エラー時の挙動  
+  　自サーバーDBのみ更新し、以降の同期で調整。  
 
 ## データの取得
 
-### `GET` /_takos/v1/user/{`key`}/{`userId`}
-
-ユーザーのデータを取得します。
-
-レート制限: なし 認証: なし
-
-keys
-
-- icon - ユーザーアイコン
-- nickName - ニックネーム
-- description - ユーザーの説明
-
-#### リクエスト
-
-`params`
-
-| パラメータ | 説明       |
-| ---------- | ---------- |
-| `userId`   | ユーザーID |
-
-#### レスポンス
-
-| 状態 | 説明 |
-| ---- | ---- |
-| 200  |      |
-
-#### 200
-
-```
-{
-  `key`: `data`,
-}
-```
-
-### `GET` /_takos/v1/group/`key`[]/{`groupId`}
-
-グループのデータを取得します。
-
-レート制限: なし 認証: なし
-
-keys
-
-- icon - グループアイコン
-- name - グループ名
-- description - グループの説明
-- owner - オーナーのユーザーID
-- defaultChannel - デフォルトチャンネルID
-- beforeEventId: string
-- channels - チャンネルとcategoryのリスト
-- role - ロールのカラーコード
-- order - channel/カテゴリーの順番
-- members - メンバーのリスト
-- all - すべてのデータ
-
-#### リクエスト
-
-`params`
-
-| パラメータ | 説明       |
-| ---------- | ---------- |
-| `groupId`  | グループID |
-
-#### レスポンス
-
-| 状態 | 説明 |
-| ---- | ---- |
-| 200  |      |
-
-```ts
-icon: base64
-name: string
-description: string
-owner: string
-defaultChannel: string
-beforeEventId: string
-channels: { 
-  categories: { 
-    id: string; 
-    name: string; 
-    permissions: {
-      roleId: string; 
-      permission: string 
-    }[]; 
-  }[]
-  channels: { 
-    category: string;
-    id: string; 
-    name: string; 
-    permissions: { 
-      roleId: string;
-      permission: string 
-    }[];
-  }[] 
-}
-order: string[]
-role: { color: string; id: string; name: string; permission: string[] }[]
-members: { id: string; role: string[] }[]
-type: "private" | "public"
-all: {
-  icon: string;
-  name: string;
-  description: string;
-  owner: string;
-  defaultChannel: string;
-  beforeEventId: string;
-  channels: { 
-    categories: { 
-      id: string; 
-      name: string; 
-      permissions: {
-        roleId: string; 
-        permission: string[]
-      }[]; 
-    }[]
-    channels: { 
-      category: string;
-      id: string; 
-      name: string; 
-      permissions: { 
-        roleId: string;
-        permissions: string[]
-      }[];
-    }[] 
-  }
-  order: string[]
-  role: { color: string; id: string; name: string; permission: string[] }[]
-  members: { id: string; role: string[] }[]
-}
-```
-
-#### 200
-
-```
-{
-  `key`: `data`,
-}
-```
-
-### `GET` /_takos/v1/key/{`kind`}
-
-ユーザーの鍵を取得するエンドポイントです。\
-**リクエスト**はクエリパラメーターにて送信します。
-
-#### クエリパラメーター
-
-| パラメーター   | 型     | 説明                                                      |
-| -------------- | ------ | --------------------------------------------------------- |
-| `userId`       | string | ユーザーID。serverKey以外必須。                           |
-| `expire`       | number | serverKeyのみ                                             |
-| `hash`         | string | `identityKey` と `roomKey` の場合に必須となるハッシュ値。 |
-| `roomId`       | string | `roomKey` の場合かつ`Group`に必要なルームID。             |
-| `targetUserId` | string | `roomKey` の場合に必要な相手のユーザーID。                |
-
-#### レスポンス
-
-| 状態 | 説明                     |
-| ---- | ------------------------ |
-| 200  | 鍵が正常に取得できた場合 |
-
-#### 200 のレスポンス例
-
-```json
-{
-  "key": "data",
-  "signature": "signature"
-}
-```
-
-### `GET` /_takos/v1/group/search
-
-グループを検索するエンドポイントです。
-
-#### クエリパラメーター
-
-| パラメーター | 型     | 説明           |
-| ------------ | ------ | -------------- |
-| `query`      | string | キーワード     |
-| `limit`      | number | 取得する最大数 |
-
-#### レスポンス
-
-| 状態 | 説明     |
-| ---- | -------- |
-| 200  | 検索結果 |
-
-#### 200 のレスポンス例
-
-```
-{
-  "groups": string[]
-}
-```
-
-### `GET` /_takos/v1/server/{`item`}
-
-サーバーのデータを取得します。
-
-レート制限: なし 認証: なし
-
-items
-
-- name - サーバー名
-- description - サーバーの説明
-- icon - サーバーアイコン
-- version - サーバーバージョン
-
-### `GET` /_takos/v1/message/:`messageId`
-
-メッセージのデータを取得します。
-
-レート制限: なし 認証: なし
-
-#### リクエスト
-
-`params`
-
-| パラメータ  | 説明         |
-| ----------- | ------------ |
-| `messageId` | メッセージID |
-
-#### レスポンス
-
-| 状態 | 説明 |
-| ---- | ---- |
-| 200  |      |
-
-#### 200
-
-```
-{
-  message: message.message,
-  signature: message.sign,
-  timestamp: message.timestamp,
-  userName: message.userName,
-}
-```
+GET系APIについては「GET API 一覧」を参照してください。
+````
